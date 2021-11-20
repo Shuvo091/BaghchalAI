@@ -1,6 +1,6 @@
 #include<bits/stdc++.h>
-#define TIGERWIN 2147483647
-#define GOATWIN -2147483647
+#define TIGERWIN 214748364
+#define GOATWIN -214748364
 #define DRAW 0
 #define MAXDEPTH 8
 #define EMPTY_SPACE '*'
@@ -435,7 +435,7 @@ bool isGameOver(bool tigerMove)
     }
     else
     {
-        if(!isThereAnyPossibleMoveExistsForGoat())
+        if(!isThereAnyPossibleMoveExistsForGoat() || numOfGoat<16)
             return true;
     }
     return false;
@@ -499,6 +499,73 @@ vector < pair <int, int> > possibleMoves(bool tigerTurn)
 }
 
 
+int possibleCaptures()
+{
+    int posCaps = 0;
+    for(int i=0; i<4; i++)
+    {
+        for(auto it:capture[Tiger[i]])
+        {
+            int val = -1;
+            if(isCaptured(Tiger[i],it.first,&val))
+                posCaps++;
+        }
+    }
+    return posCaps;
+
+}
+
+int tigersTrapped()
+{
+    int counter = 0;
+    for(int i=0; i<4; i++)
+    {
+        bool flag = false;
+        for(auto it:adjList[Tiger[i]])
+        {
+            int val = -1;
+            if(isTheCellEmpty(it) )
+            {
+                flag = true;
+            }
+            for(auto it:capture[Tiger[i]])
+            {
+                int val = -1;
+                if(isCaptured(Tiger[i],it.first,&val))
+                    flag = true;
+            }
+
+        }
+
+        if(!flag)
+        {
+            counter++;
+        }
+    }
+}
+
+int TigerEvaluatePosition()
+{
+    if (!isThereAnyPossibleMoveExistsForGoat() || numOfGoat<16)
+        return TIGERWIN;
+    if (!isThereAnyPossibleMoveExistsForTiger())
+        return GOATWIN;
+
+    return (10000 * (20-numOfGoat) + 200 * possibleCaptures() - 500 * tigersTrapped());
+}
+
+int GoatEvaluatePosition(int depth)
+{
+    if (!isThereAnyPossibleMoveExistsForGoat() || numOfGoat<16)
+        return GOATWIN;
+    if (!isThereAnyPossibleMoveExistsForTiger())
+        return TIGERWIN - depth ;
+
+    return -( - 10000 * (20-numOfGoat) - 1000 * possibleCaptures() + 500 * tigersTrapped() + depth);
+}
+
+
+
 
 
 
@@ -542,12 +609,13 @@ pair<int, pair<int,int> > minimax_optimization(bool tigersTurn, int depth, int a
         int index_of_goat = -1;
         if(tigersTurn)
         {
+            bonus = TigerEvaluatePosition();
             marker = 'T';
             int val1, val2;
 
             if(isCaptured(curr_move.first,curr_move.second,&val)) //this is the capture move
             {
-                bonus = 1000;
+
                 val1 = curr_move.first;
                 val2 = curr_move.second;
                 grid[mp2[val1].first][mp2[val1].second] = '*';
@@ -574,6 +642,7 @@ pair<int, pair<int,int> > minimax_optimization(bool tigersTurn, int depth, int a
         }
         else
         {
+            bonus = GoatEvaluatePosition(depth);
             int val1 = curr_move.first;
             int val2 = curr_move.second;
             grid[mp2[val1].first][mp2[val1].second] = '*';
@@ -626,14 +695,16 @@ pair<int, pair<int,int> > minimax_optimization(bool tigersTurn, int depth, int a
 
             if (best_score < score)
             {
-                best_score = score - depth * 10 + bonus;
+                best_score = score + bonus;
                 best_move = curr_move;
+
                 alpha = max(alpha, best_score);
 
                 if (beta <= alpha)
                 {
                     break;
                 }
+
             }
 
         }
@@ -651,13 +722,15 @@ pair<int, pair<int,int> > minimax_optimization(bool tigersTurn, int depth, int a
 
             if (best_score > score)
             {
-                best_score = score + depth * 10;
+                best_score = score + bonus;
                 best_move = curr_move;
 
+                beta = min(beta, best_score);
                 if (beta <= alpha)
                 {
                     break;
                 }
+
             }
         }
     }
@@ -692,9 +765,14 @@ void goatMove(bool tigerIsAI)
         if(!tigerIsAI)
         {
             printf("\AI with Goat: \n");
-            pair<int,int> p  = minimax_optimization(tigerIsAI,0,GOATWIN,TIGERWIN).second;
-            val1 = p.first;
-            val2 = p.second;
+            pair<int, pair<int,int> > p  = minimax_optimization(tigerIsAI,0,GOATWIN,TIGERWIN);
+            val1 = p.second.first;
+            val2 = p.second.second;
+            if(val1 == -1 && val2 == -1)
+            {
+                break;
+            }
+            cout<<"Score: "<<p.first<<endl;
             cout<<"From cell: "<<(char)(val1+'A')<<" To cell: "<<(char)(val2+'A')<<endl;
 
         }
@@ -774,9 +852,14 @@ void tigerMove(bool tigerIsAI )
         if(tigerIsAI)
         {
             printf("\AI with Tiger: \n");
-            pair<int,int> p  = minimax_optimization(tigerIsAI,0,GOATWIN,TIGERWIN).second;
-            val1 = p.first;
-            val2 = p.second;
+            pair<int, pair<int,int> > p  = minimax_optimization(tigerIsAI,0,GOATWIN,TIGERWIN);
+            val1 = p.second.first;
+            val2 = p.second.second;
+            if(val1 == -1 && val2 == -1)
+            {
+                break;
+            }
+            cout<<"Score: "<<p.first<<endl;
             cout<<"From cell: "<<(char)(val1+'A')<<" To cell: "<<(char)(val2+'A')<<endl;
         }
         else
